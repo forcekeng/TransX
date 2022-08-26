@@ -49,14 +49,14 @@ class TransH(nn.Cell):
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
 
+        # 计算投影后向量
+        head = self._projection(head, self.w[triple[:, 1]])
+        tail = self._projection(tail, self.w[triple[:, 1]])
+
         # 标准化，只使用二范数标准化
         head = self.normalizer(head)
         relation = self.normalizer(relation)
         tail = self.normalizer(tail)
-
-        # 计算投影后向量
-        head = self._projection(head, self.w[triple[:, 1]])
-        tail = self._projection(tail, self.w[triple[:, 1]])
 
         return head, relation, tail 
 

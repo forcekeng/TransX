@@ -48,10 +48,11 @@ class TransE(nn.Cell):
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
 
-        # 标准化，只使用二范数标准化
+        # 标准化
         head = self.normalizer(head)
         relation = self.normalizer(relation)
         tail = self.normalizer(tail)
+
         return head, relation, tail 
 
 

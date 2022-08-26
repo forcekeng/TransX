@@ -23,8 +23,9 @@ class TransD(nn.Cell):
         # 实体映射向量
         self.entities_proj = ms.Parameter(uniformreal((n_entity, n_entity_dim)), name="entities_proj")
         # 关系映射向量
-        self.relations_proj = ms.Parameter(uniformreal((n_relation, n_relation_dim)), name="relations_emb")
+        self.relations_proj = ms.Parameter(uniformreal((n_relation, n_relation_dim)), name="relations_proj")
 
+        self.normalizer = ops.L2Normalize(axis=-1)
 
     def construct(self, pos_triple, neg_triple):
         """
@@ -32,8 +33,8 @@ class TransD(nn.Cell):
         neg_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         """
         # 取出正、负数样本编码向量
-        pos_head, pos_relation, pos_tail = self.embed[pos_triple] # shape = (batch_size, n_dim)
-        neg_head, neg_relation, neg_tail = self.embed[neg_triple]
+        pos_head, pos_relation, pos_tail = self.embed(pos_triple) # shape = (batch_size, n_dim)
+        neg_head, neg_relation, neg_tail = self.embed(neg_triple)
         
         # 计算距离
         pos_distance = self.get_distance(pos_head, pos_relation, pos_tail, self.norm) # shape = (batch_size)
@@ -57,10 +58,9 @@ class TransD(nn.Cell):
         tail = self._project(tail, tail_proj, relation_proj)
 
         # 标准化，只使用二范数标准化
-        normalizer = ops.L2Normalize(axis=-1)
-        head = normalizer(head)
-        relation = normalizer(relation)
-        tail = normalizer(tail)
+        head = self.normalizer(head)
+        relation = self.normalizer(relation)
+        tail = self.normalizer(tail)
 
         return head, relation, tail 
 

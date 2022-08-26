@@ -30,8 +30,8 @@ class TransR(nn.Cell):
         neg_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         """
         # 取出正、负数样本编码向量
-        pos_head, pos_relation, pos_tail = self.embed[pos_triple] # shape = (batch_size, n_dim)
-        neg_head, neg_relation, neg_tail = self.embed[neg_triple]
+        pos_head, pos_relation, pos_tail = self.embed(pos_triple) # shape = (batch_size, n_dim)
+        neg_head, neg_relation, neg_tail = self.embed(neg_triple)
         
         # 计算距离
         pos_distance = self.get_distance(pos_head, pos_relation, pos_tail, self.norm) # shape = (batch_size)
@@ -47,17 +47,18 @@ class TransR(nn.Cell):
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
 
+        # 对head和tail进行映射
+        head_proj_mat = self.mat[triple[:, 0]] # 获取映射矩阵
+        tail_proj_mat = self.mat[triple[:, 2]]
+        head = self._project(head, head_proj_mat) # 映射结果
+        tail = self._project(tail, tail_proj_mat)
+
         # 标准化，只使用二范数标准化
         normalizer = ops.L2Normalize(axis=-1)
         head = normalizer(head)
         relation = normalizer(relation)
         tail = normalizer(tail)
 
-        # 对head和tail进行映射
-        head_proj_mat = self.mat[triple[:, 0]] # 获取映射矩阵
-        tail_proj_mat = self.mat[triple[:, 2]]
-        head = self._project(head, head_proj_mat) # 映射结果
-        tail = self._project(tail, tail_proj_mat)
         return head, relation, tail 
 
     def _project(self, entity_emb, proj_mat):
