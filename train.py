@@ -27,10 +27,10 @@ class TrainStep(nn.TrainOneStepCell):
 
 def save_model(net, commit=""):
     # 保存模型
-    save_dir = '/model'
+    save_dir = '/model/'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
-    ms.save_checkpoint(net, f"{save_dir}/model_{commit}_{int(time.time())}.ckpt")
+    ms.save_checkpoint(net, f"{save_dir}model_{commit}_{int(time.time())}.ckpt")
 
 def train(config:Config):
     """训练及模型参数配置"""
@@ -44,6 +44,7 @@ def train(config:Config):
     train_net = TrainStep(net, optimizer)
 
     # 开始训练
+    loss_record = []
     for epoch in range(config.n_epoch):
         loss = 0.0
         for (pos_triple, neg_triple) in data_loader:
@@ -53,20 +54,21 @@ def train(config:Config):
             out = train_net(pos_triple, neg_triple)
             loss += float(out[0])
         print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}")
+        loss_record.append(loss)
         if (epoch+1) % 50 == 0:
             save_model(net, commit=f"epoch{str(epoch+1)}")
     save_model(net, commit="final")
-
+    print(loss_record)
 
 if __name__ == '__main__':
     config = Config(
                 # root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
                 root_dir='/dataset/data/id_data/', # 对云端训练
                 dataset='FB15k-237/', 
-                mode='valid',
+                mode='train',
                 model_save_path="/model/",
                 norm=1, 
-                n_epoch=5, 
+                n_epoch=500, 
                 batch_size=512, 
                 n_entity=14541, 
                 n_relation=237, 
