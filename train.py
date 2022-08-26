@@ -60,29 +60,25 @@ def train(config:Config):
 
     # 开始训练
     loss_record = []
-    with open("log.out", "a") as logfile:
-        print("\n\n","*"*30, file=logfile)
-        print("Begin training...", file=logfile)
-        print(f"model = {config.model}, n_epoch = {config.n_epoch}\n", file=logfile)
-        for epoch in range(config.n_epoch):
-            loss = 0.0
-            time_start = time.time()
-            for n_batch, (pos_triple, neg_triple) in enumerate(data_loader):
-                # 同一批数据多训练几次，而不是每次换一批数据
-                # 避免频繁生成数据，而且通常一堆数据一次迭代不够
-                # for i in range(3):
-                out = train_net(pos_triple, neg_triple)
-                loss += float(out[0])
-                print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}", file=logfile)
+    for epoch in range(config.n_epoch):
+        loss = 0.0
+        time_start = time.time()
+        for n_batch, (pos_triple, neg_triple) in enumerate(data_loader):
+            # 同一批数据多训练几次，而不是每次换一批数据
+            # 避免频繁生成数据，而且通常一堆数据一次迭代不够
+            # for i in range(3):
+            out = train_net(pos_triple, neg_triple)
+            loss += float(out[0])
+            print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}")
 
-            print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}", file=logfile)
-            print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n", file=logfile)
+        print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}")
+        print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n")
 
-            loss_record.append(loss/len(ds.data))
-            if (epoch+1) % 10 == 0:
-                save_model(net, commit=f"{config.model}_epoch{str(epoch+1)}")
-        save_model(net, commit=f"{config.model}_final", file=logfile)
-        print("loss_record:\n",loss_record, file=logfile)
+        loss_record.append(loss/len(ds.data))
+        if (epoch+1) % 10 == 0:
+            save_model(net, commit=f"{config.model}_epoch{str(epoch+1)}")
+    save_model(net, commit=f"{config.model}_final")
+    print("loss_record:\n",loss_record)
 
 if __name__ == '__main__':
     # transD : learning_rate=0.5
