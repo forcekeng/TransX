@@ -22,7 +22,9 @@ class TransH(nn.Cell):
         self.relations_emb = ms.Parameter(uniformreal((n_relation, n_dim)), name="relations_emb")
         # 投影方向向量w
         self.w = ms.Parameter(uniformreal((n_relation, n_dim)), name="w")
-
+        
+        # 归一化器
+        self.normalizer = ops.L2Normalize(axis=-1)
 
     def construct(self, pos_triple, neg_triple):
         """
@@ -30,8 +32,8 @@ class TransH(nn.Cell):
         neg_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         """
         # 取出正、负数样本编码向量
-        pos_head, pos_relation, pos_tail = self.embed[pos_triple] # shape = (batch_size, n_dim)
-        neg_head, neg_relation, neg_tail = self.embed[neg_triple]
+        pos_head, pos_relation, pos_tail = self.embed(pos_triple) # shape = (batch_size, n_dim)
+        neg_head, neg_relation, neg_tail = self.embed(neg_triple)
         
         # 计算距离
         pos_distance = self.get_distance(pos_head, pos_relation, pos_tail, self.norm) # shape = (batch_size)
@@ -41,6 +43,23 @@ class TransH(nn.Cell):
         loss = ops.maximum(0, pos_distance - neg_distance + self.margin).sum() # 所有损失求和
         return loss
     
+    def embed(self, triple):
+        """获得编码向量"""
+        head = self.entities_emb[triple[:, 0]]
+        relation = self.relations_emb[triple[:, 1]]
+        tail = self.entities_emb[triple[:, 2]]
+
+        # 标准化，只使用二范数标准化
+        head = self.normalizer(head)
+        relation = self.normalizer(relation)
+        tail = self.normalizer(tail)
+
+        # 计算投影后向量
+        head = self._projection(head, self.w[triple[:, 1]])
+        tail = self._projection(tail, self.w[triple[:, 1]])
+
+        return head, relation, tail 
+
 
     def get_distance(self, head, relation, tail, norm=1):
         """计算距离
@@ -49,29 +68,13 @@ class TransH(nn.Cell):
         tail: ms.Tensor : shape=(batch_size, n_dim)
         return: ms.Tensor : shape=(batch_size)
         """
-        head_proj = self._projection(head, self.w)
-        tail_proj = self._projection(tail, self.w)
         if norm == 1:
-            return ops.abs(head_proj + relation - tail_proj).sum(axis=1) # L1距离
-        return ops.square(head_proj + relation - tail_proj).sum(axis=1) # L2距离
+            return ops.abs(head + relation - tail).sum(axis=1) # L1距离
+        return ops.square(head + relation - tail).sum(axis=1) # L2距离
     
-    
+
     def _projection(self, entity_emb, proj_vec):
         """投影
         """
-        proj_vec = ops.L2Normalize(axis=-1)(proj_vec)
-        return entity_emb - ms.numpy.dot(entity_emb, proj_vec) * proj_vec
-
-    # def normalize(self, pos_triple, neg_triple, norm=1):
-    #     """将本个batch中涉及的编码向量归一化
-    #     """
-    #     def _normalize_batch(arr:ms.Tensor):
-    #         return arr / ops.norm(arr, axis=1, p=norm).reshape(-1,1)
-    #     self.entities_emb[pos_triple[:, 0]] = _normalize_batch(self.entities_emb[pos_triple[:, 0]])
-    #     self.relations_emb[pos_triple[:, 1]] = _normalize_batch(self.relations_emb[pos_triple[:, 1]])
-    #     self.entities_emb[pos_triple[:, 2]] = _normalize_batch(self.entities_emb[pos_triple[:, 2]])
-        
-    #     self.entities_emb[neg_triple[:, 0]] = _normalize_batch(self.entities_emb[neg_triple[:, 0]])
-    #     self.relations_emb[neg_triple[:, 1]] = _normalize_batch(self.relations_emb[neg_triple[:, 1]])
-    #     self.entities_emb[neg_triple[:, 2]] = _normalize_batch(self.entities_emb[neg_triple[:, 2]])
-    #     return
+        proj_vec = self.normalizer(proj_vec)
+        return entity_emb - ops.batch_dot(entity_emb, proj_vec) * proj_vec
