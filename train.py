@@ -15,7 +15,7 @@ from src.transH import TransH
 from src.transR import TransR
 
 from mindspore import context
-context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
+context.set_context(mode=context.GRAPH_MODE, device_target="CPU")
 
 class TrainStep(nn.TrainOneStepCell):
     """单步训练"""
@@ -61,7 +61,7 @@ def train(config:Config):
             out = train_net(pos_triple, neg_triple)
             loss += float(out[0])
         print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}")
-        loss_record.append(loss)
+        loss_record.append(loss/len(ds.data))
         if (epoch+1) % 50 == 0:
             save_model(net, commit=f"epoch{str(epoch+1)}")
     save_model(net, commit="final")
@@ -72,11 +72,11 @@ if __name__ == '__main__':
                 # root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
                 root_dir='/dataset/data/id_data/', # 对云端训练
                 dataset='FB15k-237/', 
-                mode='valid',
+                mode='train',
                 model="transH",
                 model_save_path="/model/",
                 norm=1, 
-                n_epoch=3, 
+                n_epoch=500, 
                 batch_size=512, 
                 n_entity=14541, 
                 n_relation=237, 
