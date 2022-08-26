@@ -1,4 +1,5 @@
 # 训练脚本
+from operator import mod
 import os
 import time
 
@@ -12,6 +13,9 @@ from src.transE import TransE
 from src.transD import TransD
 from src.transH import TransH
 from src.transR import TransR
+
+from mindspore import context
+context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
 
 class TrainStep(nn.TrainOneStepCell):
     """单步训练"""
@@ -39,7 +43,10 @@ def train(config:Config):
     data_loader = data_loader.batch(config.batch_size)
     print('data_loader initialized!')
 
-    net = TransE(config.n_entity, config.n_relation, config.n_entity_dim) # n_relation_dim==n_entity_dim
+    if config.model == "transE":
+        net = TransE(config.n_entity, config.n_relation, config.n_entity_dim) # n_relation_dim==n_entity_dim
+    elif config.model == "transH":
+        net = TransH(config.n_entity, config.n_relation, config.n_entity_dim)
     optimizer = nn.Adam(net.trainable_params(), learning_rate=config.learning_rate)
     train_net = TrainStep(net, optimizer)
 
@@ -65,10 +72,11 @@ if __name__ == '__main__':
                 # root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
                 root_dir='/dataset/data/id_data/', # 对云端训练
                 dataset='FB15k-237/', 
-                mode='train',
+                mode='valid',
+                model="transH",
                 model_save_path="/model/",
                 norm=1, 
-                n_epoch=500, 
+                n_epoch=3, 
                 batch_size=512, 
                 n_entity=14541, 
                 n_relation=237, 
