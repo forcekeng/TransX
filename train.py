@@ -75,7 +75,7 @@ def train(config:Config):
         print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n")
 
         loss_record.append(loss/len(ds.data))
-        if (epoch+1) % 10 == 0:
+        if epoch % 5 == 0:
             save_model(net, commit=f"{config.model}_epoch{str(epoch+1)}")
     save_model(net, commit=f"{config.model}_final")
     print("loss_record:\n",loss_record)
