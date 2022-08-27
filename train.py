@@ -91,7 +91,7 @@ if __name__ == '__main__':
                 dataset='FB15k-237/', 
                 mode='train',
                 model="transH",
-                model_save_path="/model/",
+                model_save_path="./model/",
                 norm=1, 
                 n_epoch=200, 
                 batch_size=512, 

@@ -44,14 +44,14 @@ class TransE(nn.Cell):
 
     def embed(self, triple):
         """获得编码向量"""
+        # 自身归一化
+        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
+        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
+        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
+
         head = self.entities_emb[triple[:, 0]]
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
-
-        # 标准化
-        head = self.normalizer(head)
-        relation = self.normalizer(relation)
-        tail = self.normalizer(tail)
 
         return head, relation, tail 
 

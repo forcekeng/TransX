@@ -1,8 +1,8 @@
 class Config:
     """配置训练相关参数"""
-    def __init__(self, root_dir:str, dataset:str, 
-                mode:str, norm:int, 
-                n_epoch:int, batch_size:int, learning_rate=0.01,
+    def __init__(self, root_dir="", dataset="", 
+                mode="valid", norm=1, 
+                n_epoch=100, batch_size=512, learning_rate=0.01,
                 n_entity=13781, n_relation=237, n_entity_dim=50, 
                 n_relation_dim=50,
                 model_save_path="./net.ckpt",
