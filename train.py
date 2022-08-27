@@ -14,7 +14,7 @@ from src.transH import TransH
 from src.transR import TransR
 
 from mindspore import context
-context.set_context(mode=context.GRAPH_MODE, device_target="CPU")
+context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
 
 class TrainStep(nn.TrainOneStepCell):
     """单步训练"""
