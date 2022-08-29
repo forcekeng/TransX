@@ -1,6 +1,7 @@
 # 训练脚本
 import os
 import time
+import sys
 
 import mindspore as ms
 import mindspore.nn as nn
@@ -35,7 +36,7 @@ def save_model(net, commit=""):
         os.mkdir(save_dir)
     ms.save_checkpoint(net, f"{save_dir}model_{commit}_{int(time.time())}.ckpt")
 
-def train(config:Config):
+def train(config:Config, log_file=sys.stdout):
     """训练及模型参数配置"""
     ds = DataGenerator(config.root_dir, config.dataset, config.mode, config.n_entity)
     data_loader = ms.dataset.GeneratorDataset(ds, column_names=['positive', 'negative'], shuffle=True)
@@ -69,16 +70,16 @@ def train(config:Config):
             # for i in range(3):
             out = train_net(pos_triple, neg_triple)
             loss += float(out[0])
-            print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}")
-        print(f"norm check:", ms.numpy.norm(net.entities_emb[pos_triple[:,0]], axis=1))
-        print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}")
-        print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n")
+            print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}", file=log_file)
+        print(f"norm check:", ms.numpy.norm(net.entities_emb[pos_triple[:,0]], axis=1), file=log_file)
+        print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}", file=log_file)
+        print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n", file=log_file)
 
         loss_record.append(loss/len(ds.data))
         if epoch % 5 == 0:
             save_model(net, commit=f"{config.model}_epoch{str(epoch+1)}")
     save_model(net, commit=f"{config.model}_final")
-    print("loss_record:\n",loss_record)
+    print("loss_record:\n",loss_record, file=log_file)
 
 if __name__ == '__main__':
     # transD : learning_rate=0.5
@@ -92,6 +93,7 @@ if __name__ == '__main__':
                 mode='train',
                 model="transH",
                 model_save_path="/model/",
+                log_save_file="/model/log.out",
                 norm=1, 
                 n_epoch=200, 
                 batch_size=512, 
@@ -100,5 +102,5 @@ if __name__ == '__main__':
                 n_relation=237, 
                 n_entity_dim=50, 
                 n_relation_dim=50)
-
-    train(config)
+    with open(config.log_save_file, "a") as log_file:
+        train(config, log_file)

@@ -6,6 +6,7 @@ class Config:
                 n_entity=13781, n_relation=237, n_entity_dim=50, 
                 n_relation_dim=50,
                 model_save_path="./net.ckpt",
+                log_save_file="/model/log.out",
                 model="transE"):
         self.root_dir = root_dir
         self.dataset = dataset
@@ -20,7 +21,8 @@ class Config:
         self.learning_rate = learning_rate
         self.model_save_path = model_save_path
         self.model = model
-
+        self.log_save_file = log_save_file="/model/log.out"
+        
     def save_config(self, only_net=True):
         """
         only_net: bool : 仅保留网络相关参数，而不保存文件夹路径 root_dir等
