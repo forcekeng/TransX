@@ -55,7 +55,7 @@ def train(config:Config):
     else:
         print(f"Error: Unknown model :{config.model}, please choose one from "
                 "[transE,transH, transR, transD].")
-    optimizer = nn.Adam(net.trainable_params(), learning_rate=config.learning_rate)
+    optimizer = nn.SGD(net.trainable_params(), learning_rate=config.learning_rate)
     train_net = TrainStep(net, optimizer)
 
     # 开始训练
@@ -70,7 +70,7 @@ def train(config:Config):
             out = train_net(pos_triple, neg_triple)
             loss += float(out[0])
             print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}")
-
+        print(f"norm check:", ms.numpy.norm(net.entities_emb[pos_triple[:,0]], axis=1))
         print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}")
         print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n")
 
@@ -91,11 +91,11 @@ if __name__ == '__main__':
                 dataset='FB15k-237/', 
                 mode='train',
                 model="transH",
-                model_save_path="./model/",
+                model_save_path="/model/",
                 norm=1, 
                 n_epoch=200, 
                 batch_size=512, 
-                learning_rate=0.1,
+                learning_rate=0.01,
                 n_entity=14541, 
                 n_relation=237, 
                 n_entity_dim=50, 

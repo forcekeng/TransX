@@ -52,7 +52,7 @@ class TransE(nn.Cell):
         head = self.entities_emb[triple[:, 0]]
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
-
+        # print(np.linalg.norm(head, axis=1))
         return head, relation, tail 
 
 

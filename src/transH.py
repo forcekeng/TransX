@@ -4,7 +4,6 @@ import mindspore.ops as ops
 
 import numpy as np
 
-
 class TransH(nn.Cell):
     """TransH模型"""
     def __init__(self, n_entity, n_relation, n_dim, margin=1.0, norm=1):
@@ -15,16 +14,17 @@ class TransH(nn.Cell):
         self.n_dim = n_dim   # 编码维度
         self.norm = norm     # 所用范数
         self.margin = margin # 算法中参数
-         # 实体编码
-        uniformreal = ops.UniformReal(seed=1)  # 正态分布生成器
-        self.entities_emb = ms.Parameter(uniformreal((n_entity, n_dim)), name='entities_emb')
-        # 关系编码
-        self.relations_emb = ms.Parameter(uniformreal((n_relation, n_dim)), name="relations_emb")
-        # 投影方向向量w
-        self.w = ms.Parameter(uniformreal((n_relation, n_dim)), name="w")
-        
+        # 实体编码
         # 归一化器
         self.normalizer = ops.L2Normalize(axis=-1)
+        uniformreal = ops.UniformReal(seed=1)  # 正态分布生成器
+        self.entities_emb = ms.Parameter(self.normalizer(uniformreal((n_entity, n_dim))), name='entities_emb')
+        # 关系编码
+        self.relations_emb = ms.Parameter(self.normalizer(uniformreal((n_relation, n_dim))), name="relations_emb")
+        # 投影方向向量w
+        self.w = ms.Parameter(self.normalizer(uniformreal((n_relation, n_dim))), name="w")
+        
+       
 
     def construct(self, pos_triple, neg_triple):
         """
@@ -46,18 +46,20 @@ class TransH(nn.Cell):
     def embed(self, triple):
         """获得编码向量"""
         # 自身归一化
-        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
-        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
-        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
-
         head = self.entities_emb[triple[:, 0]]
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
-
+        proj_w = self.w[triple[:,1]]
+        
         # 计算投影后向量
-        head = self._projection(head, self.w[triple[:, 1]])
-        tail = self._projection(tail, self.w[triple[:, 1]])
-
+        head = self._projection(head, proj_w)
+        tail = self._projection(tail, proj_w)
+        
+        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
+        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
+        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
+        self.w[triple[:,1]] = self.normalizer(self.w[triple[:, 1]])
+                
         return head, relation, tail 
 
 
@@ -76,5 +78,5 @@ class TransH(nn.Cell):
     def _projection(self, entity_emb, proj_vec):
         """投影
         """
-        proj_vec = self.normalizer(proj_vec)
         return entity_emb - ops.batch_dot(entity_emb, proj_vec) * proj_vec
+        
