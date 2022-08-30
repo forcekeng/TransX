@@ -1,19 +1,19 @@
 # 精度验证脚本
-import operator
-
 import mindspore as ms
 import mindspore.nn as nn
 import mindspore.ops as ops
 
 import numpy as np
+import tqdm
 
 from src.config import Config
 from src.dataset import DataGenerator
 
+
 class Test:
     """测试类"""
     def __init__(self, n_entity, n_relation, test_triple, entities_emb, 
-                 relations_emb, proj_weight, train_triple=None, is_filter=False):
+                 relations_emb, proj_weight=None, train_triple=None, is_filter=False, norm=1):
         self.n_entity = n_entity
         self.n_relation = n_relation
         self.test_triple = test_triple
@@ -21,6 +21,7 @@ class Test:
         self.entities_emb = entities_emb
         self.relations_emb = relations_emb
         self.proj_weight = proj_weight
+        self.norm = norm
         self.hits10 = 0
         self.mean_rank = 0
     
@@ -37,67 +38,42 @@ class Test:
         rank_sum = 0
         step = 0
         
-        for triple in self.test_triple:
-            rank_head_dict = {}
-            rank_tail_dict = {}
-            
-            # for entity in range(self.n_entity):
-            print(triple)
-            for entity in range(triple[0]+1):
-                # 实体编号即为 [0, 实体数)
-                head = self.entities_emb[triple[0]]
-                relation = self.entities_emb[triple[1]]
-                tail = self.entities_emb[triple[2]]
+        for triple in tqdm.tqdm(self.test_triple):
+                
+            proj = self.proj_weight[triple[1]]
+            # 将entities映射
+            entities_proj = self.entities_emb - ops.dot(self.entities_emb, proj.reshape(-1,1)) * proj
+            relation = self.relations_emb[triple[1]]
+            head_proj = entities_proj[triple[0]] # shape=(n_dim), 投影后的head
+            tail_proj = entities_proj[triple[2]] # shape=(n_dim), 投影后的tail
 
-                corrupt = self.entities_emb[entity]
-                proj = self.proj_weight[triple[1]]
+            relations = ms.numpy.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
+            head_projs = ms.numpy.repeat(ops.ExpandDims()(head_proj,0), self.n_entity, axis=0)
+            tail_projs = ms.numpy.repeat(ops.ExpandDims()(tail_proj,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
 
-                head = self.project(head, proj)
-                tail = self.project(tail, proj)
-                corrupt = self.project(corrupt, proj)
-
-                corrupt_head_tri = (corrupt, relation, tail)
-                corrupt_tail_tri = (head, relation, corrupt)
-                # 不考虑过滤
-                rank_head_dict[(entity, triple[1], triple[2])] = self.get_distance(corrupt_head_tri)
-                rank_tail_dict[(triple[0], triple[1], entity)] = self.get_distance(corrupt_tail_tri)
-            # 排序
-            rank_head_sorted = sorted(rank_head_dict.items(), key=operator.itemgetter(1))
-            rank_tail_sorted = sorted(rank_tail_dict.items(), key=operator.itemgetter(1))
+            # corrupt head
+            dist_op = ops.Abs()
+            if self.norm == 2:
+                dist_op = ops.Square()
+            corrupt_head_dists = dist_op(entities_proj + relations - tail_projs).sum(axis=1) # 获得各个节点的距离
+            dist, index = ops.sort(corrupt_head_dists)
+            hits += int(triple[0] in index[:10])
+            rank_sum += np.where(index.asnumpy() == triple[0])[0]
             
-            print(triple)
-            print(list(rank_head_sorted)[:10])
-            # rank_sum and hits
-            for i, sorted_triple in enumerate(rank_head_sorted):
-                # head 相同
-                if i >= 10: 
-                    break # just see top10
-                if triple[0] == sorted_triple[0][0]:
-                    if i < 10:
-                        hits += 1
-                        print("hits head at: ",i)
-                    rank_sum += i + 1
-                    break
-            for i, sorted_triple in enumerate(rank_tail_sorted):
-                # tail 相同
-                if i >= 10: 
-                    break # just see top10
-                if triple[2] == sorted_triple[0][2]:
-                    if i < 10:
-                        hits += 1
-                        print("hits tail at: ",i)
-                    rank_sum += i + 1
-                    break
+            # corrupt tail
+            corrupt_tail_dists = dist_op(head_projs + relations - entities_proj).sum(axis=1)
+            dist, index = ops.sort(corrupt_tail_dists)
+            hits += int(triple[2] in index[:10])
+            rank_sum += np.where(index.asnumpy() == triple[2])[0]
             
-            step += 1
-            if step % 1 == 0:
-                print(f"step: {step}, hits: {hits/2/step}, rank_sum: {rank_sum/2/step}")
-        
+            #print(int(triple[2] in index[:10])+int(triple[0] in index[:10]),
+            #          np.where(index.asnumpy() == triple[0])[0], np.where(index.asnumpy() == triple[2])[0])
         self.hits10 = hits / (2 * len(self.test_triple))
         self.mean_rank = rank_sum / (2 * len(self.test_triple))
         return self.hits10, self.mean_rank
 
-param_path = "./checkpoints/model_transH_epoch26_1661642455.ckpt"
+
+param_path = "./checkpoints/model_transH_epoch16_1661816229.ckpt"
 param_dict = ms.load_checkpoint(param_path)
 
 # 对transH
@@ -107,8 +83,8 @@ config = Config(
             root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
             # root_dir='/dataset/data/id_data/', # 对云端训练
             dataset='FB15k-237/', 
-            mode='valid',
-            model="transR",
+            mode='test',
+            model="transH",
             batch_size=512, 
             n_entity=14541, 
             n_relation=237, 
@@ -117,7 +93,8 @@ config = Config(
 
 ds = DataGenerator(config.root_dir, config.dataset, config.mode, config.n_entity)
 test = Test(config.n_entity, config.n_relation, ds.data, 
-            param_dict["entities_emb"], param_dict["relations_emb"], param_dict["w"])
+            param_dict["entities_emb"], param_dict["relations_emb"], param_dict["w"], 
+            model=config.model)
 
 test.rank()
 

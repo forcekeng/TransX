@@ -15,7 +15,7 @@ from src.transH import TransH
 from src.transR import TransR
 
 from mindspore import context
-context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
+context.set_context(mode=context.GRAPH_MODE, device_target="CPU")
 
 class TrainStep(nn.TrainOneStepCell):
     """单步训练"""
@@ -31,7 +31,7 @@ class TrainStep(nn.TrainOneStepCell):
 
 def save_model(net, commit=""):
     # 保存模型
-    save_dir = '/model/'
+    save_dir = 'checkpoints/'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     ms.save_checkpoint(net, f"{save_dir}model_{commit}_{int(time.time())}.ckpt")
@@ -83,13 +83,13 @@ def train(config:Config, log_file=sys.stdout):
 
 if __name__ == '__main__':
     config = Config(
-                # root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
-                root_dir='/dataset/data/id_data/', # 对云端训练
+                root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
+                # root_dir='/dataset/data/id_data/', # 对云端训练
                 dataset='FB15k-237/', 
                 mode='train',
-                model="transH",
-                model_save_path="/model/",
-                log_save_file="/model/log.out",
+                model="transE",
+                model_save_path="./checkpoints/",
+                log_save_file="log.out",
                 norm=1, 
                 n_epoch=200, 
                 batch_size=512, 

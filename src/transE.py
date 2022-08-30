@@ -44,15 +44,15 @@ class TransE(nn.Cell):
 
     def embed(self, triple):
         """获得编码向量"""
-        # 自身归一化
-        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
-        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
-        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
-
         head = self.entities_emb[triple[:, 0]]
         relation = self.relations_emb[triple[:, 1]]
         tail = self.entities_emb[triple[:, 2]]
-        # print(np.linalg.norm(head, axis=1))
+
+        # 归一化
+        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
+        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
+        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
+        
         return head, relation, tail 
 
 
@@ -66,20 +66,6 @@ class TransE(nn.Cell):
         if norm == 1:
             return ops.abs(head + relation - tail).sum(axis=1) # L1距离
         return ops.square(head + relation - tail).sum(axis=1) # L2距离
-    
-    # def normalize(self, pos_triple, neg_triple, norm=1):
-    #     """将本个batch中涉及的编码向量归一化
-    #     """
-    #     def _normalize_batch(arr:ms.Tensor):
-    #         return arr / ops.norm(arr, axis=1, p=norm).reshape(-1,1)
-    #     self.entities_emb[pos_triple[:, 0]] = _normalize_batch(self.entities_emb[pos_triple[:, 0]])
-    #     self.relations_emb[pos_triple[:, 1]] = _normalize_batch(self.relations_emb[pos_triple[:, 1]])
-    #     self.entities_emb[pos_triple[:, 2]] = _normalize_batch(self.entities_emb[pos_triple[:, 2]])
-        
-    #     self.entities_emb[neg_triple[:, 0]] = _normalize_batch(self.entities_emb[neg_triple[:, 0]])
-    #     self.relations_emb[neg_triple[:, 1]] = _normalize_batch(self.relations_emb[neg_triple[:, 1]])
-    #     self.entities_emb[neg_triple[:, 2]] = _normalize_batch(self.entities_emb[neg_triple[:, 2]])
-    #     return
 
 
 if __name__ == '__main__':
