@@ -2,13 +2,17 @@
 import os
 import time
 import sys
+import datetime
+
 
 import mindspore as ms
 import mindspore.nn as nn
 import mindspore.ops as ops
+from mindspore.train.serialization import load_checkpoint, load_param_into_net
+
 
 from src.config import Config
-from src.dataset import DataGenerator
+from dataset_bak import DataGenerator
 from src.transE import TransE
 from src.transD import TransD
 from src.transH import TransH
@@ -29,14 +33,13 @@ class TrainStep(nn.TrainOneStepCell):
         return loss, self.optimizer(grads)
 
 
-def save_model(net, commit=""):
+def save_model(net, save_dir, commit=""):
     # 保存模型
-    save_dir = 'checkpoints/'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     ms.save_checkpoint(net, f"{save_dir}model_{commit}_{int(time.time())}.ckpt")
 
-def train(config:Config, log_file=sys.stdout):
+def train(config:Config, log_file=sys.stdout, pretrained=False):
     """训练及模型参数配置"""
     ds = DataGenerator(config.root_dir, config.dataset, config.mode, config.n_entity)
     data_loader = ms.dataset.GeneratorDataset(ds, column_names=['positive', 'negative'], shuffle=True)
@@ -56,6 +59,10 @@ def train(config:Config, log_file=sys.stdout):
     else:
         print(f"Error: Unknown model :{config.model}, please choose one from "
                 "[transE,transH, transR, transD].")
+    if pretrained:
+        params = load_checkpoint(config.model_pretrained_path)
+        load_param_into_net(net, params)
+
     optimizer = nn.SGD(net.trainable_params(), learning_rate=config.learning_rate)
     train_net = TrainStep(net, optimizer)
 
@@ -67,18 +74,22 @@ def train(config:Config, log_file=sys.stdout):
         for n_batch, (pos_triple, neg_triple) in enumerate(data_loader):
             # 同一批数据多训练几次，而不是每次换一批数据
             # 避免频繁生成数据，而且通常一堆数据一次迭代不够
-            # for i in range(3):
+            t1 = datetime.datetime.now()
+            print("t1:",t1)
             out = train_net(pos_triple, neg_triple)
             loss += float(out[0])
-            print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}", file=log_file)
-        print(f"norm check:", ms.numpy.norm(net.entities_emb[pos_triple[:,0]], axis=1), file=log_file)
-        print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}", file=log_file)
-        print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n", file=log_file)
+            t2 = datetime.datetime.now()
+            print("t2:",t2)
+            print(n_batch, f"one batch spend {t2 - t1} seconds!")
+            print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}")
+        print(f"norm check:", ms.numpy.norm(net.entities_emb[pos_triple[:5,0]], axis=1))
+        print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}")
+        print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n")
 
         loss_record.append(loss/len(ds.data))
         if epoch % 5 == 0:
-            save_model(net, commit=f"{config.model}_epoch{str(epoch+1)}")
-    save_model(net, commit=f"{config.model}_final")
+            save_model(net, config.model_save_dir, commit=f"{config.model}_epoch{str(epoch+1)}")
+    save_model(net, config.model_save_dir, commit=f"{config.model}_final")
     print("loss_record:\n",loss_record, file=log_file)
 
 if __name__ == '__main__':
@@ -88,15 +99,17 @@ if __name__ == '__main__':
                 dataset='FB15k-237/', 
                 mode='train',
                 model="transE",
-                model_save_path="./checkpoints/",
+                model_pretrained_path="",
+                model_save_dir="/model/",
                 log_save_file="log.out",
                 norm=1, 
-                n_epoch=200, 
-                batch_size=512, 
-                learning_rate=0.01,
+                n_epoch=500, 
+                batch_size=1024, 
+                learning_rate=0.001,
                 n_entity=14541, 
                 n_relation=237, 
                 n_entity_dim=50, 
                 n_relation_dim=50)
     with open(config.log_save_file, "a") as log_file:
-        train(config, log_file)
+        train(config, log_file, pretrained=False)
+

@@ -6,16 +6,18 @@ import sys
 import mindspore as ms
 import mindspore.nn as nn
 import mindspore.ops as ops
+from mindspore.train.serialization import load_checkpoint, load_param_into_net
+
 
 from src.config import Config
-from src.dataset import DataGenerator
+from src.dataset import DataLoader
 from src.transE import TransE
 from src.transD import TransD
 from src.transH import TransH
 from src.transR import TransR
 
 from mindspore import context
-context.set_context(mode=context.GRAPH_MODE, device_target="GPU")
+context.set_context(mode=context.GRAPH_MODE, device_target="CPU")
 
 class TrainStep(nn.TrainOneStepCell):
     """单步训练"""
@@ -29,20 +31,14 @@ class TrainStep(nn.TrainOneStepCell):
         return loss, self.optimizer(grads)
 
 
-def save_model(net, commit=""):
+def save_model(net, save_dir, commit=""):
     # 保存模型
-    save_dir = '/model/'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     ms.save_checkpoint(net, f"{save_dir}model_{commit}_{int(time.time())}.ckpt")
 
-def train(config:Config, log_file=sys.stdout):
+def train(config:Config, log_file=sys.stdout, pretrained=False):
     """训练及模型参数配置"""
-    ds = DataGenerator(config.root_dir, config.dataset, config.mode, config.n_entity)
-    data_loader = ms.dataset.GeneratorDataset(ds, column_names=['positive', 'negative'], shuffle=True)
-    data_loader = data_loader.batch(config.batch_size)
-    print('data_loader initialized!')
-
     if config.model == "transE":
         net = TransE(config.n_entity, config.n_relation, config.n_entity_dim) # n_relation_dim==n_entity_dim
     elif config.model == "transH":
@@ -56,47 +52,54 @@ def train(config:Config, log_file=sys.stdout):
     else:
         print(f"Error: Unknown model :{config.model}, please choose one from "
                 "[transE,transH, transR, transD].")
+    if pretrained:
+        params = load_checkpoint(config.model_pretrained_path)
+        load_param_into_net(net, params)
+
+    data_loader = DataLoader(config.root_dir, config.dataset, config.mode, config.n_entity)
+    print('data_loader initialized!')
     optimizer = nn.SGD(net.trainable_params(), learning_rate=config.learning_rate)
     train_net = TrainStep(net, optimizer)
 
     # 开始训练
     loss_record = []
+    loss = 0.0
+    time_start = time.time()
     for epoch in range(config.n_epoch):
-        loss = 0.0
-        time_start = time.time()
-        for n_batch, (pos_triple, neg_triple) in enumerate(data_loader):
-            # 同一批数据多训练几次，而不是每次换一批数据
-            # 避免频繁生成数据，而且通常一堆数据一次迭代不够
-            # for i in range(3):
-            out = train_net(pos_triple, neg_triple)
-            loss += float(out[0])
-            print(f"epoch [{epoch}], batch [{n_batch}], loss = {float(out[0])/config.batch_size}", file=log_file)
-        print(f"norm check:", ms.numpy.norm(net.entities_emb[pos_triple[:,0]], axis=1), file=log_file)
-        print(f"epoch [{epoch}] : loss = {loss/len(ds.data)}", file=log_file)
-        print(f"this epoch spends {(time.time()-time_start)/60} minutes!\n", file=log_file)
-
-        loss_record.append(loss/len(ds.data))
-        if epoch % 5 == 0:
-            save_model(net, commit=f"{config.model}_epoch{str(epoch+1)}")
-    save_model(net, commit=f"{config.model}_final")
+        pos_triple, neg_triple = data_loader.get_batch_data(batch_size=1024)
+        out = train_net(pos_triple, neg_triple)
+        loss += float(out[0])
+        if (epoch+1) % 1000 == 0:
+            print(f"epoch [{epoch}]") # 输出到控制台
+            print(f"1000 iterations spends {(time.time()-time_start)/60} minutes!\n", file=log_file)
+            print(f"loss average = {loss / 1000}", file=log_file)
+            loss_record.append(loss)
+            loss = 0.0
+            time_start = time.time()
+        if (epoch+1) % 10000 == 0:
+            save_model(net, config.model_save_dir, commit=f"{config.model}_epoch{str(epoch+1)}")
+    save_model(net, config.model_save_dir, commit=f"{config.model}_final")
     print("loss_record:\n",loss_record, file=log_file)
+
 
 if __name__ == '__main__':
     config = Config(
-                # root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
-                root_dir='/dataset/data/id_data/', # 对云端训练
+                root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
+                # root_dir='/dataset/data/id_data/', # 对云端训练
                 dataset='FB15k-237/', 
                 mode='train',
-                model="transH",
-                model_save_path="/model/",
+                model="transE",
+                model_pretrained_path="",
+                model_save_dir="/model/",
                 log_save_file="/model/log.out",
                 norm=1, 
-                n_epoch=200, 
-                batch_size=512, 
-                learning_rate=0.01,
+                n_epoch=1000000, 
+                batch_size=1024, 
+                learning_rate=0.001,
                 n_entity=14541, 
                 n_relation=237, 
                 n_entity_dim=50, 
                 n_relation_dim=50)
     with open(config.log_save_file, "a") as log_file:
-        train(config, log_file)
+        train(config, log_file, pretrained=False)
+

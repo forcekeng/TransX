@@ -17,9 +17,10 @@ class TransR(nn.Cell):
         
         # 实体编码
         uniformreal = ops.UniformReal(seed=1)  # 正态分布生成器
-        self.entities_emb = ms.Parameter(uniformreal((n_entity, n_entity_dim)), name='entities_emb')
+        self.normalizer = ops.L2Normalize(axis=-1)
+        self.entities_emb = ms.Parameter(self.normalizer(uniformreal((n_entity, n_entity_dim))), name='entities_emb')
         # 关系编码
-        self.relations_emb = ms.Parameter(uniformreal((n_relation, n_relation_dim)), name="relations_emb")
+        self.relations_emb = ms.Parameter(self.normalizer(uniformreal((n_relation, n_relation_dim))), name="relations_emb")
         # 实体映射到关系的矩阵，每个实体都有自己的映射矩阵
         self.mat = ms.Parameter(uniformreal((n_entity, n_entity_dim, n_relation_dim)), name="mat")
         
@@ -54,10 +55,9 @@ class TransR(nn.Cell):
         tail = self._project(tail, tail_proj_mat)
 
         # 标准化，只使用二范数标准化
-        normalizer = ops.L2Normalize(axis=-1)
-        head = normalizer(head)
-        relation = normalizer(relation)
-        tail = normalizer(tail)
+        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
+        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
+        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
 
         return head, relation, tail 
 

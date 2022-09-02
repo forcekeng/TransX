@@ -1,9 +1,9 @@
 # 数据集处理定义
 import os
-import random
+import numpy as np
+import mindspore as ms
 
-
-class DataGenerator:
+class DataLoader:
     """读取关系数据的数据集类"""
     def __init__(self, root_dir, dataset, mode, n_entity):
         """
@@ -29,41 +29,31 @@ class DataGenerator:
                 for trituple in lines:
                     head, rel, tail = trituple.split('\t')
                     data.append((int(head.strip()), int(rel.strip()), int(tail.strip())))
+        data = np.array(data, dtype=np.int64) # data.shape = (样本数, 3)
         return data
     
-    def _corrupt_trituple(self, trituple):
-        """制造错误的关系
-        trituple: 正常的三元组
-        return: 错误（corrupted）的三元组
+    def get_batch_data(self, batch_size=1024, random=True):
+        """随机获取一批数据
         """
-        corrupt_tri = trituple
-        count = 0  # 设定重复次数，防止数据错误导致死循环
-        while (corrupt_tri in self.data and count<100):
-            (h,r,t) = corrupt_tri
-            if random.random() < 0.5: # random.random() 生成 [0,1]之间的随机数
-                corrupt_h = random.randint(0, self.n_entity-1)
-                corrupt_tri = (corrupt_h, r, t)
-            else:
-                corrupt_t = random.randint(0, self.n_entity-1)
-                corrupt_tri = (h, r, corrupt_t)
-        return corrupt_tri
-                
+        indexes = np.random.randint(0, len(self.data), size=batch_size)
+        pos_data = self.data[indexes] # 随机选取的样本,当作正样本
+        # 将样本corrupt,将其head和tail随机替换,变成负样本
+        # 尽管可能导致少量负样本其实为正样本,但因为其概率小,而且多次出现概率极低,可忽略
+        corrupt_head = np.random.randint(0, self.n_entity, size=batch_size)
+        corrupt_tail = np.random.randint(0, self.n_entity, size=batch_size)
+        neg_data = pos_data.copy()
+        neg_data[:, 0] = corrupt_head
+        neg_data[:, 2] = corrupt_tail
+        return ms.Tensor(pos_data), ms.Tensor(neg_data)
+
+
+if __name__ == "__main__":
+    """仅用于测试"""
+    root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/'
+    dataset='FB15k-237/'
+    mode='train'
+    data_loader = DataLoader(root_dir, dataset, mode, n_entity=14541)
+    print(data_loader.get_batch_data(batch_size=5))
+
         
-    def __getitem__(self, index):
-        """自定义随机访问函数
-        index: 索引下表
-        return: 包含正常和corrupted数据的元组，形如((h,r,t), (ch, cr, ct))
-        注：对测试集等不需要corrupted数据，直接忽略第2项即可
-        """
-        normal_tri = self.data[index]
-        corrupt_tri = self._corrupt_trituple(normal_tri)
-        return (normal_tri, corrupt_tri)
-    
-    def __len__(self):
-        return len(self.data)
 
-
-def get_batch_dataloader(ds: DataGenerator, batch_size:int, shuffle=True):
-    import mindspore
-    data_loader = mindspore.dataset.GeneratorDataset(ds, column_names=['positive', 'negative'], shuffle=shuffle)
-    data_loader = data_loader.batch(batch_size)

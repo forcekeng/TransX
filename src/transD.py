@@ -17,16 +17,16 @@ class TransD(nn.Cell):
         self.n_relation_dim = n_relation_dim   # 关系编码维度，仅考虑其等于实体编码维度的情形
         # 实体编码
         uniformreal = ops.UniformReal(seed=1)
-        self.entities_emb = ms.Parameter(uniformreal((n_entity, n_entity_dim)), name='entities_emb')
-        # 关系编码
-        self.relations_emb = ms.Parameter(uniformreal((n_relation, n_relation_dim)), name="relations_emb")
-        # 实体映射向量
-        self.entities_proj = ms.Parameter(uniformreal((n_entity, n_entity_dim)), name="entities_proj")
-        # 关系映射向量
-        self.relations_proj = ms.Parameter(uniformreal((n_relation, n_relation_dim)), name="relations_proj")
-
         self.normalizer = ops.L2Normalize(axis=-1)
+        self.entities_emb = ms.Parameter(self.normalizer(uniformreal((n_entity, n_entity_dim))), name='entities_emb')
+        # 关系编码
+        self.relations_emb = ms.Parameter(self.normalizer(uniformreal((n_relation, n_relation_dim))), name="relations_emb")
+        # 实体映射向量
+        self.entities_proj = ms.Parameter(self.normalizer(uniformreal((n_entity, n_entity_dim))), name="entities_proj")
+        # 关系映射向量
+        self.relations_proj = ms.Parameter(self.normalizer(uniformreal((n_relation, n_relation_dim))), name="relations_proj")
 
+        
     def construct(self, pos_triple, neg_triple):
         """
         pos_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
@@ -57,10 +57,10 @@ class TransD(nn.Cell):
         head = self._project(head, head_proj, relation_proj) # 映射结果
         tail = self._project(tail, tail_proj, relation_proj)
 
-        # 标准化，只使用二范数标准化
-        head = self.normalizer(head)
-        relation = self.normalizer(relation)
-        tail = self.normalizer(tail)
+        # 归一化
+        self.entities_proj[triple[:, 0]] = self.normalizer(self.entities_proj[triple[:, 0]])
+        self.entities_proj[triple[:, 2]] = self.normalizer(self.entities_proj[triple[:, 2]])
+        self.relations_proj[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
 
         return head, relation, tail 
 
@@ -72,7 +72,7 @@ class TransD(nn.Cell):
         relation_proj: ms.Tensor : shape=(batch_size, n_relation_dim)
         return: ms.Tensor : shape=(batch_size, n_relation_dim==n_entity_dim)
         """
-        assert self.n_entity_dim == self.n_relation_dim # 仅仅考虑编码长度相同的情形
+        # assert self.n_entity_dim == self.n_relation_dim # 仅仅考虑编码长度相同的情形
         return entity_emb + ops.batch_dot(entity_emb, entity_proj) * relation_proj
 
 

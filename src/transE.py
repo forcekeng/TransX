@@ -26,8 +26,8 @@ class TransE(nn.Cell):
 
     def construct(self, pos_triple, neg_triple):
         """
-        pos_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
-        neg_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
+        pos_triple: ms.Tensor : shape=(batch_size, 3)
+        neg_triple: ms.Tensor : shape=(batch_size, 3)
         """
         # 取出正、负数样本编码向量
         pos_head, pos_relation, pos_tail = self.embed(pos_triple)# shape = (batch_size, n_dim)

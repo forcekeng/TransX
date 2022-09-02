@@ -5,7 +5,8 @@ class Config:
                 n_epoch=100, batch_size=512, learning_rate=0.01,
                 n_entity=13781, n_relation=237, n_entity_dim=50, 
                 n_relation_dim=50,
-                model_save_path="./net.ckpt",
+                model_pretrained_path="",
+                model_save_dir="./",
                 log_save_file="/model/log.out",
                 model="transE"):
         self.root_dir = root_dir
@@ -19,9 +20,10 @@ class Config:
         self.n_entity_dim = n_entity_dim
         self.n_relation_dim = n_relation_dim
         self.learning_rate = learning_rate
-        self.model_save_path = model_save_path
+        self.model_pretrained_path = model_pretrained_path
+        self.model_save_dir = model_save_dir
         self.model = model
-        self.log_save_file = log_save_file="/model/log.out"
+        self.log_save_file = log_save_file
         
     def save_config(self, only_net=True):
         """
