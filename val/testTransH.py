@@ -50,7 +50,7 @@ class TestTransH:
             corrupt_head_dists = self.dist_op(entities_proj + relations - tail_projs).sum(axis=1) # 获得各个节点的距离
             dist, index = ops.sort(corrupt_head_dists) # 排序
             hits += int(triple[0] in index[:10])       # 看真实的head是否在排序后的前10中，即 hits10
-            rank_sum += np.where(index.asnumpy() == triple[0])[0] # 计算真实的head的实际位次
+            rank_sum += np.where(index.asnumpy() == triple[0].asnumpy())[0] # 计算真实的head的实际位次
             
             # corrupt tail
             # 将triple的tail分别替换成各个实体，计算替换后的距离，
@@ -58,7 +58,7 @@ class TestTransH:
             corrupt_tail_dists = self.dist_op(head_projs + relations - entities_proj).sum(axis=1)
             dist, index = ops.sort(corrupt_tail_dists) 
             hits += int(triple[2] in index[:10])
-            rank_sum += np.where(index.asnumpy() == triple[2])[0]
+            rank_sum += np.where(index.asnumpy() == triple[2].asnumpy())[0]
             
         # 计算hits10和mean_rank
         self.hits10 = hits / (2 * len(self.test_triple)) # 之前对所有entity累加head和tail，计算平均值

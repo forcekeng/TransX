@@ -71,8 +71,8 @@ def train(config:Config, log_file=sys.stdout, pretrained=False):
         loss += float(out[0])
         if (epoch+1) % 1000 == 0:
             print(f"epoch [{epoch}]") # 输出到控制台
-            print(f"loss average = {loss / 1000}")
             print(f"1000 iterations spends {(time.time()-time_start)/60} minutes!\n")
+            print(f"loss average = {loss / 1000}")
             
             print(f"1000 iterations spends {(time.time()-time_start)/60} minutes!\n", file=log_file)
             print(f"loss average = {loss / 1000}", file=log_file)
@@ -88,21 +88,22 @@ def train(config:Config, log_file=sys.stdout, pretrained=False):
 if __name__ == '__main__':
     config = Config(
                 # root_dir='E:/comptition/maoshenAI/mycode/submit/data/id_data/', 
-                root_dir='/dataset/data/id_data/', # 对云端训练
-                dataset='FB15k-237/', 
+                root_dir='/dataset/data/', # 对云端训练
+                dataset='FB15K/', 
                 mode='train',
                 model="transR",
                 model_pretrained_path="",
                 model_save_dir="/model/",
-                log_save_file="/model/logR.out",
+                log_save_file="/model/fb15k_logR.out",
                 norm=1, 
                 n_epoch=1000000, 
                 batch_size=4096, 
                 learning_rate=0.001,
-                n_entity=14541, 
-                n_relation=237, 
+                n_entity=14951, 
+                n_relation=1345, 
                 n_entity_dim=50, 
                 n_relation_dim=50)
     with open(config.log_save_file, "a") as log_file:
         train(config, log_file, pretrained=False)
+        
 
