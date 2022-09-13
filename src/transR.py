@@ -21,8 +21,8 @@ class TransR(nn.Cell):
         self.entities_emb = ms.Parameter(self.normalizer(uniformreal((n_entity, n_entity_dim))), name='entities_emb')
         # 关系编码
         self.relations_emb = ms.Parameter(self.normalizer(uniformreal((n_relation, n_relation_dim))), name="relations_emb")
-        # 实体映射到关系的矩阵，每个实体都有自己的映射矩阵
-        self.mat = ms.Parameter(uniformreal((n_entity, n_entity_dim, n_relation_dim)), name="mat")
+        # 实体映射到关系的矩阵，根据每个关系都有自己的映射矩阵
+        self.mat = ms.Parameter(uniformreal((n_relation, n_entity_dim, n_relation_dim)), name="mat")
         
 
     def construct(self, pos_triple, neg_triple):
@@ -49,22 +49,23 @@ class TransR(nn.Cell):
         tail = self.entities_emb[triple[:, 2]]
 
         # 对head和tail进行映射
-        head_proj_mat = self.mat[triple[:, 0]] # 获取映射矩阵
-        tail_proj_mat = self.mat[triple[:, 2]]
-        head = self._project(head, head_proj_mat) # 映射结果
-        tail = self._project(tail, tail_proj_mat)
+        rel_proj_mat = self.mat[triple[:, 1]] # 获取映射矩阵
+        head = self._project(head, rel_proj_mat) # 映射结果
+        tail = self._project(tail, rel_proj_mat)
 
+        head = self.normalizer(head)
+        tail = self.normalizer(tail)
         # 标准化，只使用二范数标准化
-        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
-        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
-        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
+        # self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
+        # self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
+        # self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
 
         return head, relation, tail 
 
     def _project(self, entity_emb, proj_mat):
         """将实体向量进行映射
         entity_emb: ms.Tensor : shape=(batch_size, n_entity_dim)
-        proj_mat: ms.Tensor : shape=(batch_size, n_entity_dim, n_relation_dim)
+        proj_mat: ms.Tensor : shape=(n_entity_dim, n_relation_dim)
         return: ms.Tensor : shape=(batch_size, n_relation_dim)
         """
         return ops.batch_dot(entity_emb, proj_mat)

@@ -1,2 +1,5 @@
-mindspore==1.8.1
-numpy==1.17
+mindspore>=1.6.0
+numpy
+easydict
+tqdm
+

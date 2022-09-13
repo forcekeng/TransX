@@ -2,8 +2,6 @@ import mindspore as ms
 import mindspore.nn as nn
 import mindspore.ops as ops
 
-import numpy as np
-
 
 class TransD(nn.Cell):
     def __init__(self, n_entity, n_relation, n_entity_dim, n_relation_dim, margin=1.0, norm=1):

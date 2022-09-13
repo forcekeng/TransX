@@ -1,32 +1,95 @@
-class Config:
-    """配置训练相关参数"""
-    def __init__(self, root_dir="", dataset="", 
-                mode="valid", norm=1, 
-                n_epoch=100, batch_size=512, learning_rate=0.01,
-                n_entity=13781, n_relation=237, n_entity_dim=50, 
-                n_relation_dim=50,
-                model_pretrained_path="",
-                model_save_dir="./",
-                log_save_file="/model/log.out",
-                model="transE"):
-        self.root_dir = root_dir
-        self.dataset = dataset
-        self.mode = mode
-        self.norm = norm
-        self.n_epoch = n_epoch
-        self.batch_size = batch_size
-        self.n_entity = n_entity
-        self.n_relation = n_relation
-        self.n_entity_dim = n_entity_dim
-        self.n_relation_dim = n_relation_dim
-        self.learning_rate = learning_rate
-        self.model_pretrained_path = model_pretrained_path
-        self.model_save_dir = model_save_dir
-        self.model = model
-        self.log_save_file = log_save_file
-        
-    def save_config(self, only_net=True):
-        """
-        only_net: bool : 仅保留网络相关参数，而不保存文件夹路径 root_dir等
-        """
-        pass
+from easydict import EasyDict as ed
+
+global_config = ed({
+    "device": "GPU"            # 硬件平台，可选{"CPU", "GPU", "Ascend"}
+})
+
+fb15k_config = ed({
+    # 全局参数
+    "model": "transE",              # 模型，可选 {"transD", "transE", "transH", "transR"}
+    "n_entity": 14951,              # 实体数量
+    "n_relation": 1345,             # 关系数量
+    
+    # 训练参数
+    "pre_model_path": "",        # 预训练模型保存路径
+    "pretrained": False,         # 是否使用预训练模型，为True时需要pre_model_path指定正确路径
+    "model_save_dir": "checkpoints/",   # 模型保存路径
+    "log_save_file": "log.out",  # 训练日志保存路径
+    "iterations": 1000000,      # 最大迭代次数
+    "batch_size": 4096,         # 批处理大小
+    "learning_rate": 0.001,                # 学习率
+    
+    # 模型参数
+    ## transD参数
+    "transD": {
+        "n_entity_dim": 50,         # 实体编码维度
+        "n_relation_dim": 50,       # 关系编码维度
+        "margin": 1.0,              # 算法中计算损失时参数
+        "norm": 1                   # 计算损失所用范数，可选{1,2}
+    },
+    ## transE参数
+    "transE": {     
+        "n_dim": 50,        # 编码维度，实体编码维度==关系编码维度
+        "margin": 1.0,      # 算法中计算损失时参数
+        "norm": 1           # 计算损失所用范数
+    },
+    ## transH参数
+    "transH": {
+        "n_dim": 100,       # 编码维度，实体编码维度==关系编码维度
+        "margin": 1.0,      # 算法中计算损失时参数
+        "norm": 1           # 计算损失所用范数
+    },
+    ## transR参数
+    "transR": {
+        "n_entity_dim": 100,        # 实体编码维度
+        "n_relation_dim": 100,      # 关系编码维度
+        "margin": 1.0,              # 算法中计算损失时参数
+        "norm": 1                   # 计算损失所用范数
+    }
+})
+
+
+
+wn18_config = ed({
+    # 全局参数
+    "model": "transE",
+    "n_entity": 40943,              # 实体数量
+    "n_relation": 18,               # 关系数量
+
+    # 训练参数
+    "pre_model_path": "",        # 预训练模型保存路径
+    "pretrained": False,         # 是否使用预训练模型，为True时需要pre_model_path指定正确路径
+    "model_save_dir": "checkpoints/",   # 模型保存路径
+    "log_save_file": "log.out",  # 训练日志保存路径
+    "iterations": 1000000,      # 最大迭代次数
+    "batch_size": 4096,         # 批处理大小
+    "learning_rate": 0.001,                # 学习率
+
+    # 模型参数
+    ## transD参数
+    "transD": {
+        "n_entity_dim": 50,         # 实体编码维度
+        "n_relation_dim": 50,       # 关系编码维度
+        "margin": 1.0,              # 算法中计算损失时参数
+        "norm": 1                   # 计算损失所用范数，可选{1,2}
+    },
+    ## transE参数
+    "transE": {     
+        "n_dim": 50,        # 编码维度，实体编码维度==关系编码维度
+        "margin": 1.0,      # 算法中计算损失时参数
+        "norm": 1           # 计算损失所用范数
+    },
+    ## transH参数
+    "transH": {
+        "n_dim": 50,       # 编码维度，实体编码维度==关系编码维度
+        "margin": 1.0,      # 算法中计算损失时参数
+        "norm": 1           # 计算损失所用范数
+    },
+    ## transR参数
+    "transR": {
+        "n_entity_dim": 30,         # 实体编码维度
+        "n_relation_dim": 30,       # 关系编码维度
+        "margin": 1.0,              # 算法中计算损失时参数
+        "norm": 1                   # 计算损失所用范数
+    }
+})
