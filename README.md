@@ -91,7 +91,7 @@ tqdm
 - eval.py: 验证脚本
 - README.md: 本文档
 - requirements.txt: Python库配置
-- images/: README.md图谱
+- images/: README.md图等保存位置
 - src/config.py: 训练集和测试集配置
 - src/dataset.py: 数据集读取类
 - src/transD,E,H,R: 定义的知识图谱模型
@@ -222,7 +222,7 @@ python eval.py
 |模型|FB15K hits@10(%)(no filter)| WN18 hits@10(%)(no filter)| FB15K hits@10(%)(with filter)| WB18 hits@10(%)(with filter)|
 |---|---|---|---|---|
 |  transD | 50.24  | 80.28  | 67.87  |  92.58 |
-|  transE | 48.02  | 50.73  | 66.91  |  66.91 |
+|  transE | 48.02  | 50.73  | 66.91  |  62.76 |
 |  transH | 46.26  | 71.78  | 62.88  |  83.22 |
 |  transR | 39.03  | 65.01  |  53.26 | 74.56  |
 
