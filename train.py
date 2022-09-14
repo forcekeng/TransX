@@ -86,9 +86,12 @@ def train(data_dir, model, config):
         out = train_net(pos_triple, neg_triple)
         loss += float(out[0].asnumpy())
         if (epoch+1) % 1000 == 0:
-            print(f"epoch [{epoch}], loss = {loss / 1000}, 1000 iterations spend "\
+            print(f"epoch [{epoch+1}], loss = {loss / 1000}, 1000 iterations spend "\
                     f"{(time.time()-time_start)/60} minutes!")
             
+            with open(config.log_save_file, 'a') as f:
+                print(f"epoch [{epoch+1}], loss = {loss / 1000}, 1000 iterations spend "\
+                    f"{(time.time()-time_start)/60} minutes!", file=f)
             loss_record.append(loss/1000)
             loss = 0.0
             time_start = time.time()
@@ -106,10 +109,11 @@ if __name__ == '__main__':
     data_dir = "/dataset/data/FB15K/" # 数据集所在文件夹，其下包含train2id.txt等文件
     model = "transE"    # 模型，可选 {"transD", "transE", "transH", "transR"}
     
+    print(f"dataset = {dataset}, model = {model}")
     # 其他配置请参阅 src/config.py 文件
-    if dataset == "fb15k":
+    if dataset.lower() == "fb15k":
         config = fb15k_config
-    elif dataset == "wn18":
+    elif dataset.lower() == "wn18":
         config = wn18_config
     config.model = model
 

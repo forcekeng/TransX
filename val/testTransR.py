@@ -43,7 +43,7 @@ class TestTransR:
         hits = 0
         rank_sum = 0
         
-        for triple in tqdm.tqdm(self.test_triple[:200]):
+        for triple in tqdm.tqdm(self.test_triple):
             # triple: 包含3个整数的tuple，形如 (1,2,3)
             # 将所有entities减去各自在通过变换矩阵变换
             # self.entities_emb.shape = (n_entity, n_entity_dim) # n_entity_dim == n_relation_dim
@@ -111,6 +111,6 @@ class TestTransR:
             rank_sum += np.where(index.asnumpy() == triple.asnumpy()[2])[0]
             
         # 计算hits10和mean_rank
-        self.hits10 = hits / 400#(2 * len(self.test_triple)) # 之前对所有entity累加head和tail，计算平均值
-        self.mean_rank = rank_sum / 400#(2 * len(self.test_triple)) + 1 # +1因为下标从1开始而不是0
+        self.hits10 = hits / (2 * len(self.test_triple)) # 之前对所有entity累加head和tail，计算平均值
+        self.mean_rank = rank_sum / (2 * len(self.test_triple)) + 1 # +1因为下标从1开始而不是0
         return self.hits10, self.mean_rank

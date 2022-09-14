@@ -22,14 +22,14 @@ fb15k_config = ed({
     # 模型参数
     ## transD参数
     "transD": {
-        "n_entity_dim": 50,         # 实体编码维度
-        "n_relation_dim": 50,       # 关系编码维度
+        "n_entity_dim": 100,         # 实体编码维度
+        "n_relation_dim": 100,       # 关系编码维度
         "margin": 1.0,              # 算法中计算损失时参数
         "norm": 1                   # 计算损失所用范数，可选{1,2}
     },
     ## transE参数
     "transE": {     
-        "n_dim": 50,        # 编码维度，实体编码维度==关系编码维度
+        "n_dim": 100,        # 编码维度，实体编码维度==关系编码维度
         "margin": 1.0,      # 算法中计算损失时参数
         "norm": 1           # 计算损失所用范数
     },
