@@ -33,15 +33,17 @@ class DataLoader:
     def get_batch_data(self, batch_size=1024, random=True):
         """随机获取一批数据
         """
-        indexes = ms.Tensor(np.random.randint(0, len(self.data), size=batch_size, dtype=np.int32))
-        pos_data = self.data[indexes] # 随机选取的样本,当作正样本
+        indexes = np.random.randint(0, len(self.data), size=batch_size, dtype=np.int32)
+        data = self.data.asnumpy()
+        pos_data = data[indexes] # 随机选取的样本,当作正样本
         # 将样本corrupt,将其head和tail随机替换,变成负样本
         # 尽管可能导致少量负样本其实为正样本,但因为其概率小,而且多次出现概率极低,可忽略
         neg_data = pos_data.copy()
         if np.random.uniform() > 0.5:
-            corrupt_head = ms.Tensor(np.random.randint(0, self.n_entity, size=batch_size))
+            corrupt_head = np.random.randint(0, self.n_entity, size=batch_size, dtype=np.int32)
             neg_data[:, 0] = corrupt_head
         else:
-            corrupt_tail = ms.Tensor(np.random.randint(0, self.n_entity, size=batch_size))
+            corrupt_tail = np.random.randint(0, self.n_entity, size=batch_size, dtype=np.int32)
             neg_data[:, 2] = corrupt_tail
-        return pos_data, neg_data
+        return ms.Tensor(pos_data), ms.Tensor(neg_data)
+        

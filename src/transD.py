@@ -13,9 +13,13 @@ class TransD(nn.Cell):
 
         self.n_entity_dim = n_entity_dim   # 实体编码维度
         self.n_relation_dim = n_relation_dim   # 关系编码维度，仅考虑其等于实体编码维度的情形
-        # 实体编码
+
+        self.normalizer = ops.L2Normalize(axis=-1)  # 归一化器
+        self.abs = ops.Abs()
+        self.maximum = ops.Maximum()
+        self.square = ops.Square()
         uniformreal = ops.UniformReal(seed=1)
-        self.normalizer = ops.L2Normalize(axis=-1)
+        # 实体编码
         self.entities_emb = ms.Parameter(self.normalizer(uniformreal((n_entity, n_entity_dim))), name='entities_emb')
         # 关系编码
         self.relations_emb = ms.Parameter(self.normalizer(uniformreal((n_relation, n_relation_dim))), name="relations_emb")
@@ -30,6 +34,12 @@ class TransD(nn.Cell):
         pos_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         neg_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         """
+        # 归一化
+        self.entities_emb.set_data(self.normalizer(self.entities_emb))
+        self.relations_emb.set_data(self.normalizer(self.relations_emb))
+        self.entities_proj.set_data(self.normalizer(self.entities_proj))
+        self.relations_proj.set_data(self.normalizer(self.relations_proj))
+
         # 取出正、负数样本编码向量
         pos_head, pos_relation, pos_tail = self.embed(pos_triple) # shape = (batch_size, n_dim)
         neg_head, neg_relation, neg_tail = self.embed(neg_triple)
@@ -39,7 +49,7 @@ class TransD(nn.Cell):
         neg_distance = self.get_distance(neg_head, neg_relation, neg_tail, self.norm)
         
         # 计算损失
-        loss = ops.maximum(0, pos_distance - neg_distance + self.margin).sum() # 所有损失求和
+        loss = self.maximum(0, pos_distance - neg_distance + self.margin).sum() # 所有损失求和
         return loss
     
     def embed(self, triple):
@@ -54,11 +64,6 @@ class TransD(nn.Cell):
         tail_proj = self.entities_proj[triple[:, 2]]
         head = self._project(head, head_proj, relation_proj) # 映射结果
         tail = self._project(tail, tail_proj, relation_proj)
-
-        # 归一化
-        self.entities_proj[triple[:, 0]] = self.normalizer(self.entities_proj[triple[:, 0]])
-        self.entities_proj[triple[:, 2]] = self.normalizer(self.entities_proj[triple[:, 2]])
-        self.relations_proj[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
 
         return head, relation, tail 
 
@@ -82,5 +87,6 @@ class TransD(nn.Cell):
         return: ms.Tensor : shape=(batch_size)
         """
         if norm == 1:
-            return ops.abs(head + relation - tail).sum(axis=1) # L1距离
-        return ops.square(head + relation - tail).sum(axis=1) # L2距离
+            return self.abs(head + relation - tail).sum(axis=1) # L1距离
+        return self.square(head + relation - tail).sum(axis=1) # L2距离
+

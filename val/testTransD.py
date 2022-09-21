@@ -5,7 +5,7 @@ import mindspore.ops as ops
 
 import numpy as np
 import tqdm
-
+import mindspore.numpy as ms_np
 
 class TestTransD:
     """测试类"""
@@ -27,6 +27,7 @@ class TestTransD:
         self.mean_rank = 0                   # mean_rank结果
 
         self.dist_op = ops.Abs() if self.norm == 1 else ops.Square() # 计算距离
+        self.sort = ops.Sort()
 
     def _get_train_triple(self, train_triple):
         """将训练集的三元组转换成集合，便于filter时快速过滤
@@ -50,7 +51,7 @@ class TestTransD:
             relation = self.relations_emb[triple[1]] # shape=(n_dim)
             relation_proj = self.relations_proj[triple[1]]
 
-            relation_repeat = ms.numpy.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
+            relation_repeat = ms_np.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
             # entities_ver: 计算所有head投影后的值
             # self.entities_emb.shape = (n_entity, n_dim)   # n_dim = n_entity_dim = n_relation_dim
             # self.entities_proj.shape = (n_entity, n_dim)
@@ -66,16 +67,20 @@ class TestTransD:
             # tail_ver = tail + (tail_proj * tail).sum() * relation_proj
             # 为了后续便于一一对应计算，将向量重复
             # 说明：此处使用封装的向量运算，相比使用for循环完成计算hit10等，前者速度大大提高
-            relation_repeat = ms.numpy.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
-            head_ver_repeat = ms.numpy.repeat(ops.ExpandDims()(head_ver,0), self.n_entity, axis=0)
-            tail_ver_repeat = ms.numpy.repeat(ops.ExpandDims()(tail_ver,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
+            relation_repeat = ms_np.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
+            head_ver_repeat = ms_np.repeat(ops.ExpandDims()(head_ver,0), self.n_entity, axis=0)
+            tail_ver_repeat = ms_np.repeat(ops.ExpandDims()(tail_ver,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
                         
             # corrupt head
             # 将triple的head分别替换成各个实体，计算替换后的距离，
             # 这里使用所有实体的张量直接计算，而不是通过for循环
             # entities_ver: 计算所有head投影后的值            
             corrupt_head_dists = self.dist_op(entities_ver + relation_repeat - tail_ver_repeat).sum(axis=1) # 获得各个节点的距离
-            dist, index = ops.sort(corrupt_head_dists) # 排序
+            # dist, index = self.sort(corrupt_head_dists) # 排序
+            index = np.argsort(corrupt_head_dists.asnumpy()) 
+            triple = triple.asnumpy()
+
+            # index = index.asnumpy()
             ## ## hits@10 for corrupt head
             if (not self.is_filter) or (self.train_triple is None):
                 # 无需filter或无训练集，直接看前10
@@ -92,13 +97,15 @@ class TestTransD:
                     if cur_tri not in self.train_triple:
                         not_hit += 1
             ## mean_rank for corrupt head
-            rank_sum += np.where(index.asnumpy() == triple.asnumpy()[0])[0] # 计算真实的head的实际位次
+            rank_sum += np.where(index == triple[0])[0] # 计算真实的head的实际位次
             
             # corrupt tail
             # 将triple的tail分别替换成各个实体，计算替换后的距离，
             # 这里使用所有实体的张量直接计算，而不是通过for循环
             corrupt_tail_dists = self.dist_op(head_ver_repeat + relation_repeat - entities_ver).sum(axis=1)
-            dist, index = ops.sort(corrupt_tail_dists) 
+            index = np.argsort(corrupt_tail_dists.asnumpy()) 
+
+            # index = index.asnumpy()
             ## hits@10 for corrupt tail
             if (not self.is_filter) or (self.train_triple is None):
                 hits += int(triple[2] in index[:10])
@@ -114,9 +121,10 @@ class TestTransD:
                     if cur_tri not in self.train_triple:
                         not_hit += 1
             ## mean-rank for corrupt tail
-            rank_sum += np.where(index.asnumpy() == triple.asnumpy()[2])[0]
+            rank_sum += np.where(index == triple[2])[0]
             
             # 输出中间一些结果
+            count += 1
             if count%1000 == 0:
                 print(f"iter [{count}]\trank_sum={rank_sum}, hits_sum={hits},"
                         f"mean_rank={rank_sum/2/count}, hits10={hits/2/count}")

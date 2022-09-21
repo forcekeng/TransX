@@ -60,7 +60,7 @@ tqdm
 将代码和数据下载解压后，代码所在根目录记为`<root_dir>`。
 ### 基本配置 
 
-在训练或测试时，应指定配置信息，修改`<root_dir>/src/config.py`中的`basic_config` 3项配置：
+在训练或测试时，应指定配置信息，修改`<root_dir>/train.py`中的3项配置：
 
 (1) 配置数据集文件夹`data_dir`，文件夹下应包含 `train2id.txt`,`valid2id.txt`,`test2id.txt`等三个文件，分别对应训练集、验证集和测试集。
 (2) 数据集 `dataset`，可选 `FB15K`或`WN18`。
@@ -73,7 +73,7 @@ tqdm
 * 测试命令：`python eval.py`
 
 
-说明1：训练和推理暂时仅支持CPU/GPU平台。
+说明1：训练和推理支持CPU/GPU/Ascend平台。
 
 
 ## 脚本说明
@@ -108,33 +108,33 @@ fb15k_config = ed({
     "n_relation": 1345,             # 关系数量
     
     # 训练参数
-    "pre_model_path": "",        # 预训练模型保存路径
-    "pretrained": False,         # 是否使用预训练模型，为True时需要pre_model_path指定正确路径
+    "pre_model_path": "",           # 预训练模型保存路径
+    "pretrained": False,            # 是否使用预训练模型，为True时需要pre_model_path指定正确路径
     "model_save_dir": "checkpoints/",   # 模型保存路径
-    "log_save_file": "log.out",  # 训练日志保存路径
-    "iterations": 1000000,      # 最大迭代次数
-    "batch_size": 4096,         # 批处理大小
-    "learning_rate": 0.001,                # 学习率
+    "log_save_file": "log.out",     # 训练日志保存路径
+    "iterations": 1000000,          # 最大迭代次数
+    "batch_size": 4096,             # 批处理大小
+    "learning_rate": 0.001,         # 学习率
     
     # 模型参数
     ## transD参数
     "transD": {
-        "n_entity_dim": 100,         # 实体编码维度
-        "n_relation_dim": 100,       # 关系编码维度
+        "n_entity_dim": 100,        # 实体编码维度
+        "n_relation_dim": 100,      # 关系编码维度
         "margin": 1.0,              # 算法中计算损失时参数
         "norm": 1                   # 计算损失所用范数，可选{1,2}
     },
     ## transE参数
     "transE": {     
-        "n_dim": 100,        # 编码维度，实体编码维度==关系编码维度
-        "margin": 1.0,      # 算法中计算损失时参数
-        "norm": 1           # 计算损失所用范数
+        "n_dim": 100,               # 编码维度，实体编码维度==关系编码维度
+        "margin": 1.0,              # 算法中计算损失时参数
+        "norm": 1                   # 计算损失所用范数，可选1或2
     },
     ## transH参数
     "transH": {
-        "n_dim": 100,       # 编码维度，实体编码维度==关系编码维度
-        "margin": 1.0,      # 算法中计算损失时参数
-        "norm": 1           # 计算损失所用范数
+        "n_dim": 100,               # 编码维度，实体编码维度==关系编码维度
+        "margin": 1.0,              # 算法中计算损失时参数
+        "norm": 1                   # 计算损失所用范数
     },
     ## transR参数
     "transR": {
@@ -160,13 +160,6 @@ fb15k_config = ed({
 python train.py
 ```
 
-可配置`src/config.py`的`log_save_file`项配置log输出路径。Linux系统下，如果想保存输出内容至`train.out`文件，也可运行
-```bash
-python train.py | tee train.out
-```
-补充：`tee`为Linux的命令，可将控制台输出同时输出至指定路径的文件`<log_out_path>`。
-
-
 #### 训练过程日志
 以GPU在数据集WN18上训练transE为例，其部分日志如下：
 ```log
@@ -186,8 +179,7 @@ loss_record:
 >=================== 训练结束 ===================<
 ```
 
-- 说明1：训练checkpoint将被保存在`log.out`中，可在训练前修改`src/config.py` 中的配置修改保存路径。
-- 说明2：其他数据集或模型的[训练日志可从此处下载](https://git.openi.org.cn/forcekeng/transX_data_log_model/src/branch/master/log)。部分训练日志格式略有区别，但包含迭代次数、损失和耗时等信息。
+- 说明：其他数据集或模型的[训练日志可从此处下载](https://git.openi.org.cn/forcekeng/transX_data_log_model/src/branch/master/log)。
 
 
 ## 评估
@@ -221,20 +213,20 @@ python eval.py
 
 |模型|FB15K hits@10(%)(no filter)| WN18 hits@10(%)(no filter)| FB15K hits@10(%)(with filter)| WB18 hits@10(%)(with filter)|
 |---|---|---|---|---|
-|  transD | 50.24  | 80.28  | 67.87  |  92.58 |
-|  transE | 48.02  | 50.73  | 66.91  |  62.76 |
-|  transH | 46.26  | 71.78  | 62.88  |  83.22 |
-|  transR | 39.03  | 65.01  |  53.26 | 74.56  |
+|  transD | 44.82  | 74.17  | 58.97  |  86.19 |
+|  transE | 45.09  | 74.26  | 59.22  |  86.38 |
+|  transH | 45.36  | 78.74  | 59.54  |  91.65 |
+|  transR | 44.92  | 51.64  |  58.02 |  59.41 |
 
 - 针对Mean-Rank指标
   
 对于Mean-Rank指标，与filter无关
 |模型|FB15K mean-rank| WN18 mean-rank|
 |---|---|---|
-|  transD |218.3| 659.5 |
-|  transE |244.9| 1003.2 |
-|  transH |267.8| 697.5 |
-|  transR |271.7| 685.5 |
+|  transD |212.6| 682.6 |
+|  transE |208.6| 676.4 |
+|  transH |210.0| 639.8 |
+|  transR |270.1| 606.5 |
 
 运行结束后，会输出类似下面的内容：
 ```log
@@ -253,27 +245,27 @@ hits10 = 0.33, mean_rank = [491.052]
 
 提供您训练性能的详细描述，例如finishing loss, throughput, checkpoint size等
 
-你可以参考如下模板
 对模型transD、transE、transH、transR使用CPU/GPU平台训练，参数如下。多个模型采用单核2U8G CPU或PCIE V100-32G GPU等训练。
 
 |参数 | 值 | |
 | --- | ---| ---| 
-|Resource| GPU: 1*T4, CPU: 4, Memory: 32GB, Shared Memory: 16GB | 
-|MindSpore Version| 1.17.0 |
+|Resource| 1*Ascend-910(32GB) | ARM: 24 vCPUs 96GB | 
+|AI Engine| 	
+Ascend-Powered-Engine mindspore_1.5.1-cann_5.0.2-py_3.7-euler_2.8.3-aarch64 |
 |Dataset| FB15K或WN18|
-|Training Parameters| batch_size=4096(for FB15K),  batch_size=1024(for WN18), iterations=1-000-000, learning_rate=0.001 |
+|Training Parameters| batch_size=4096(for FB15K),  batch_size=1024(for WN18), iterations=$10^5至2\times 10^5$, learning_rate=0.001 |
 |Loss| L1 norm |
 | Uploaded Date       | 09/14/2022 (month/day/year) |
-|Total time| ≈2.8h |
+|Total time| ≈15h |
 | Scripts                    | [link](https://gitee.com/mindspore/models/tree/master/official/cv/)                       |
 
 每次迭代（1个batch_size对应的样本）耗时：
-|  模型     |   耗时-FB15K (ms)  | 耗时-WN18 (ms) | 收敛后平均损失-FB15K| 收敛后平均损失-WN18 | 
-| ---       | --- | --- | --- |--- |
-|transD     | 9.5 | 9.8    |  12.27    |0.55 |
-|transE     | 8.0|   7.6   | 16.1          | 1.0 |
-|transH     | 9.2|   9.0   | 12.0          | 0.6|
-|transR     | 13.9|  8.3   |  15.4         |  0.7  |
+|  模型     |   耗时-FB15K (min)  | 耗时-WN18 (min) | 收敛后平均损失-FB15K| 收敛后平均损失-WN18 | 
+| ---       | --- | ---     | ---       |--- |
+|transD     | 4.3 |  5.8    |  18.0     |1.7 |
+|transE     | 1.2 |   2.3   | 17.2      | 1.6 |
+|transH     | 9.2 |   9.0   | 17.0      | 1.5|
+|transR     | 13.9|  8.3    |  21.2     |     1.1  |
 
 
 说明：模型的实体和关系编码维度和后文的“推理性能”中一致。
@@ -284,12 +276,12 @@ hits10 = 0.33, mean_rank = [491.052]
 
 你可以参照如下模板
 
-| Parameters          | GPU                      |
+| Parameters          | Ascend                      |
 | ------------------- | --------------------------- |
 | Model Version       | transD, transE, transH, transR |
-| Resource            | GPU: 1*T4, CPU: 4, Memory: 16GB, Shared Memory: 8GB |
-| Uploaded Date       | 09/14/2022 (month/day/year) |
-| MindSpore Version   | 1.16.0                       |
+| Resource            |1*Ascend-910(32GB), ARM: 24 vCPUs 96GB |
+| Uploaded Date       | 09/20/2022 (month/day/year) |
+| MindSpore Version   |  mindspore_1.5.1-py_3.7                      |
 | Dataset             | FB15K/WN18                   |
 
 
@@ -297,14 +289,13 @@ hits10 = 0.33, mean_rank = [491.052]
 
 | 模型 |  实体/关系编码维度（FB15K） | 实体/关系编码维度（WN18） | 模型大小（FB15K）  | 模型大小（WN18） | 推理耗时-FB15K（ms/样本） |推理耗时-WN18（ms/样本） |
 |---|---|---| ---| ---| --- | --- |
-|transD|  100 / 100  | 50 / 50 | 13M| 16M   | 79.4 | 119 |
-|transE|  100 / 100 | 50 / 50 |6.3M| 7.9M | 52.8 | 79.5 |
-|transH|  100 / 100 | 50 / 50 |6.8M| 7.9M | 59.2| 82.0 |
-|transR|  100 / 100 | 30 / 30 |58M| 4.8M  | 61.2| 65.7 |
+|transD|  100 / 100  | 50 / 50 | 12.4M| 15.6M   | 479 | 125 |
+|transE|  100 / 100 | 50 / 50 |6.21M| 7.81M | 452 | 85.5 |
+|transH|  100 / 100 | 50 / 50 |6.72M| 7.81M | 459| 92.0 |
+|transR|  100 / 100 | 50 / 50 |57.5M| 7.98M  | 461| 85.7 |
 
-- 说明1：表中硬件环境为：GPU: 1*T4, CPU: 4, Memory: 16GB, Shared Memory: 8GB。
-- 说明2：表中推理耗时为无filter时测得结果，有filter时推理耗时变为原来的2至4倍。
-- 说明3：总推理耗时与样本数量相关，表中显示单个样本平均耗时。FB15K测试集样本数为59071，WN18数据集样本数为5000，可据此估计完成所有样本耗时分别为79分钟左右和6分钟左右。
+- 说明1：表中推理耗时为无filter时测得结果，有filter时耗时为无filter的1.2倍左右。
+- 说明2：总推理耗时与样本数量相关，表中显示单个样本平均耗时。FB15K测试集样本数为59071，WN18数据集样本数为5000，可据此估计完成所有样本耗时分别为6小时左右和10分钟左右。
 
 
 ## 贡献指南

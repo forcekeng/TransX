@@ -2,6 +2,7 @@
 
 import mindspore as ms
 import mindspore.ops as ops
+import mindspore.numpy as ms_np
 
 import numpy as np
 import tqdm
@@ -41,7 +42,7 @@ class TestTransE:
     def rank(self):
         hits = 0
         rank_sum = 0
-        
+        count = 1
         for triple in tqdm.tqdm(self.test_triple):
             # triple: 包含3个整数的tuple=(head,relation,tail)，形如 (1,2,3)
             entities = self.entities_emb
@@ -52,15 +53,17 @@ class TestTransE:
 
             # 为了后续便于一一对应计算，将向量重复
             # 说明：此处使用封装的向量运算，相比使用for循环完成计算hit10等，前者速度大大提高
-            relation_repeat = ms.numpy.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
-            head_repeat = ms.numpy.repeat(ops.ExpandDims()(head,0), self.n_entity, axis=0)
-            tail_repeat = ms.numpy.repeat(ops.ExpandDims()(tail,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
+            relation_repeat = ms_np.repeat(ops.ExpandDims()(relation,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
+            head_repeat = ms_np.repeat(ops.ExpandDims()(head,0), self.n_entity, axis=0)
+            tail_repeat = ms_np.repeat(ops.ExpandDims()(tail,0), self.n_entity, axis=0) # shape=(n_entity, n_dim)
 
             # corrupt head
             # 将triple的head分别替换成各个实体，计算替换后的距离，
             # 这里使用所有实体的张量直接计算，而不是通过for循环
             corrupt_head_dists = self.dist_op(entities + relation_repeat - tail_repeat).sum(axis=1) # 获得各个节点的距离
-            dist, index = ops.sort(corrupt_head_dists) # 排序
+            index = np.argsort(corrupt_head_dists.asnumpy()) 
+            ## ## hits@10 for corrupt head
+            triple = triple.asnumpy()
             ## ## hits@10 for corrupt head
             if (not self.is_filter) or (self.train_triple is None):
                 # 无需filter或无训练集，直接看前10
@@ -77,13 +80,13 @@ class TestTransE:
                     if cur_tri not in self.train_triple:
                         not_hit += 1
             ## mean_rank for corrupt head
-            rank_sum += np.where(index.asnumpy() == triple.asnumpy()[0])[0] # 计算真实的head的实际位次
+            rank_sum += np.where(index == triple[0])[0] # 计算真实的head的实际位次
             
             # corrupt tail
             # 将triple的tail分别替换成各个实体，计算替换后的距离，
             # 这里使用所有实体的张量直接计算，而不是通过for循环
             corrupt_tail_dists = self.dist_op(head_repeat + relation_repeat - entities).sum(axis=1)
-            dist, index = ops.sort(corrupt_tail_dists) 
+            index = np.argsort(corrupt_tail_dists.asnumpy()) 
             ## hits@10 for corrupt tail
             if (not self.is_filter) or (self.train_triple is None):
                 hits += int(triple[2] in index[:10])
@@ -99,7 +102,12 @@ class TestTransE:
                     if cur_tri not in self.train_triple:
                         not_hit += 1
             ## mean-rank for corrupt tail
-            rank_sum += np.where(index.asnumpy() == triple.asnumpy()[2])[0]
+            rank_sum += np.where(index == triple[2])[0]
+
+            count += 1
+            if count%1000 == 0:
+                print(f"iter [{count}]\trank_sum={rank_sum}, hits_sum={hits},"
+                        f"mean_rank={rank_sum/2/count}, hits10={hits/2/count}")
             
 
         # 计算hits10和mean_rank

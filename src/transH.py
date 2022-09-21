@@ -14,23 +14,31 @@ class TransH(nn.Cell):
         self.n_dim = n_dim   # 编码维度
         self.norm = norm     # 所用范数
         self.margin = margin # 算法中参数
+       
+        self.normalizer = ops.L2Normalize(axis=-1)  # 归一化器
+        self.abs = ops.Abs()
+        self.maximum = ops.Maximum()
+        self.square = ops.Square()
+
         # 实体编码
-        # 归一化器
-        self.normalizer = ops.L2Normalize(axis=-1)
         uniformreal = ops.UniformReal(seed=1)  # 正态分布生成器
         self.entities_emb = ms.Parameter(self.normalizer(uniformreal((n_entity, n_dim))), name='entities_emb')
         # 关系编码
         self.relations_emb = ms.Parameter(self.normalizer(uniformreal((n_relation, n_dim))), name="relations_emb")
         # 投影方向向量w
         self.w = ms.Parameter(self.normalizer(uniformreal((n_relation, n_dim))), name="w")
-        
-       
+    
 
     def construct(self, pos_triple, neg_triple):
         """
         pos_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         neg_triple: ms.Tensor : shape=(batch_size, 3, n_dim)
         """
+        # 归一化
+        self.entities_emb.set_data(self.normalizer(self.entities_emb))
+        self.relations_emb.set_data(self.normalizer(self.relations_emb))
+        self.w.set_data(self.normalizer(self.w))
+
         # 取出正、负数样本编码向量
         pos_head, pos_relation, pos_tail = self.embed(pos_triple) # shape = (batch_size, n_dim)
         neg_head, neg_relation, neg_tail = self.embed(neg_triple)
@@ -40,7 +48,7 @@ class TransH(nn.Cell):
         neg_distance = self.get_distance(neg_head, neg_relation, neg_tail, self.norm)
         
         # 计算损失
-        loss = ops.maximum(0, pos_distance - neg_distance + self.margin).sum() # 所有损失求和
+        loss = self.maximum(0, pos_distance - neg_distance + self.margin).sum() # 所有损失求和
         return loss
     
     def embed(self, triple):
@@ -54,12 +62,7 @@ class TransH(nn.Cell):
         # 计算投影后向量
         head = self._projection(head, proj_w)
         tail = self._projection(tail, proj_w)
-        
-        self.entities_emb[triple[:, 0]] = self.normalizer(self.entities_emb[triple[:, 0]])
-        self.relations_emb[triple[:, 1]] = self.normalizer(self.relations_emb[triple[:, 1]])
-        self.entities_emb[triple[:, 2]] = self.normalizer(self.entities_emb[triple[:, 2]])
-        self.w[triple[:,1]] = self.normalizer(self.w[triple[:, 1]])
-                
+                      
         return head, relation, tail 
 
 
@@ -71,8 +74,8 @@ class TransH(nn.Cell):
         return: ms.Tensor : shape=(batch_size)
         """
         if norm == 1:
-            return ops.abs(head + relation - tail).sum(axis=1) # L1距离
-        return ops.square(head + relation - tail).sum(axis=1) # L2距离
+            return self.abs(head + relation - tail).sum(axis=1) # L1距离
+        return self.square(head + relation - tail).sum(axis=1) # L2距离
     
 
     def _projection(self, entity_emb, proj_vec):

@@ -1,7 +1,7 @@
 from easydict import EasyDict as ed
 
 global_config = ed({
-    "device": "GPU"            # 硬件平台，可选{"CPU", "GPU", "Ascend"}
+    "device": "Ascend"            # 硬件平台，可选{"CPU", "GPU", "Ascend"}
 })
 
 fb15k_config = ed({
@@ -9,13 +9,13 @@ fb15k_config = ed({
     "model": "transE",              # 模型，可选 {"transD", "transE", "transH", "transR"}
     "n_entity": 14951,              # 实体数量
     "n_relation": 1345,             # 关系数量
-    
+    "dataset": "fb15k",
     # 训练参数
     "pre_model_path": "",        # 预训练模型保存路径
     "pretrained": False,         # 是否使用预训练模型，为True时需要pre_model_path指定正确路径
     "model_save_dir": "checkpoints/",   # 模型保存路径
     "log_save_file": "log.out",  # 训练日志保存路径
-    "iterations": 1000000,      # 最大迭代次数
+    "iterations": 100000,      # 最大迭代次数
     "batch_size": 4096,         # 批处理大小
     "learning_rate": 0.001,                # 学习率
     
@@ -55,14 +55,14 @@ wn18_config = ed({
     "model": "transE",
     "n_entity": 40943,              # 实体数量
     "n_relation": 18,               # 关系数量
-
+    "dataset": "wn18",
     # 训练参数
     "pre_model_path": "",        # 预训练模型保存路径
     "pretrained": False,         # 是否使用预训练模型，为True时需要pre_model_path指定正确路径
     "model_save_dir": "checkpoints/",   # 模型保存路径
     "log_save_file": "log.out",  # 训练日志保存路径
-    "iterations": 1000000,      # 最大迭代次数
-    "batch_size": 4096,         # 批处理大小
+    "iterations": 100000,        # 最大迭代次数
+    "batch_size": 1024,          # 批处理大小
     "learning_rate": 0.001,                # 学习率
 
     # 模型参数

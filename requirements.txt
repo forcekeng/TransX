@@ -1,4 +1,4 @@
-mindspore>=1.6.0
+mindspore-ascend>=1.5.0
 numpy
 easydict
 tqdm
